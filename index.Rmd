@@ -1,0 +1,62 @@
+---
+title: "HSDN Symptoms"
+output:
+  html_document:
+    theme: cosmo
+    highlight: pygments
+---
+
+```{r, message=FALSE}
+library(dplyr)
+library(DT)
+library(ggplot2)
+
+options(stringsAsFactors=FALSE)
+```
+
+Symptoms from the [HSDN](https://dx.doi.org/10.1038/ncomms5212) (Human symptoms--disease network)
+
+```{r}
+# read Disease Ontology to MESH mapping
+mesh.df <- 
+  'http://git.dhimmel.com/disease-ontology/data/xrefs-prop-slim.tsv' %>%
+  read.delim() %>%
+  dplyr::filter(resource == 'MSH') %>%
+  dplyr::select(-resource) %>%
+  dplyr::rename(disease_id = resource_id)
+
+# read HSDN supplement that was mapped to MESH
+hsdn.df <- 
+  'https://raw.githubusercontent.com/LABrueggs/HSDN/master/Combined-Output.tsv' %>%
+  read.delim(check.names = FALSE, row.names=1) %>%
+  dplyr::rename(
+    symptom_id = `MeSH Symptom ID`,
+    symptom_name = `MeSH Symptom Term`,
+    disease_id = `MeSH Disease ID`,
+    disease_name = `MeSH Disease Term`,
+    tfidf_score = `TFIDF score`,
+    cooccurs = `PubMed occurrence`
+  )
+
+# add MESH to hsdn.df
+hsdn.df <- hsdn.df %>%
+  dplyr::inner_join(mesh.df)
+
+path <- file.path('data', 'symptoms-DO.tsv')
+write.table(hsdn.df, path, sep='\t', row.names=FALSE, quote=FALSE)
+
+DT::datatable(hsdn.df %>% dplyr::filter(tfidf_score >= 25))
+```
+
+```{r}
+hsdn.df %>%
+  ggplot(aes(x = tfidf_score)) +
+  geom_histogram(alpha=0.6) +
+  scale_x_log10() + theme_bw()
+
+hsdn.df %>%
+  ggplot(aes(x = tfidf_score)) +
+  geom_histogram(alpha=0.6, binwidth=1) +
+  xlim(c(0, 50)) +
+  theme_bw()
+```
