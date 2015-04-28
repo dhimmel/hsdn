@@ -19,7 +19,8 @@ Symptoms from the [HSDN](https://dx.doi.org/10.1038/ncomms5212) (Human symptoms-
 ```{r}
 # read Disease Ontology to MESH mapping
 mesh.df <- 
-  'http://git.dhimmel.com/disease-ontology/data/xrefs-prop-slim.tsv' %>%
+  #'http://git.dhimmel.com/disease-ontology/data/xrefs-prop-slim.tsv' %>%
+  'http://git.dhimmel.com/disease-ontology/data/xrefs-slim.tsv' %>%
   read.delim() %>%
   dplyr::filter(resource == 'MSH') %>%
   dplyr::select(-resource) %>%
@@ -49,14 +50,39 @@ DT::datatable(hsdn.df %>% dplyr::filter(tfidf_score >= 25))
 ```
 
 ```{r}
+# Distribution of tfidf_scores
 hsdn.df %>%
   ggplot(aes(x = tfidf_score)) +
   geom_histogram(alpha=0.6) +
   scale_x_log10() + theme_bw()
 
+# Distribution of tfidf_scores (zoomed in)
 hsdn.df %>%
   ggplot(aes(x = tfidf_score)) +
   geom_histogram(alpha=0.6, binwidth=1) +
   xlim(c(0, 50)) +
   theme_bw()
+```
+
+```{r, fig.height=40}
+# distribution of symptom scores by DO slim disease
+hsdn.df %>%
+  ggplot(aes(x = doid_name, y = tfidf_score)) +
+  geom_violin(fill='darkgreen', color=NA) +
+  #geom_jitter(alpha = 0.4) +
+  scale_y_log10() +
+  theme_bw() +
+  coord_flip()
+```
+
+```{r, fig.height=40}
+# number of symptoms (and percent with tfidf_score >= 25) per DO slim disease
+hsdn.df %>%
+  dplyr::group_by(doid_code, doid_name) %>%
+  dplyr::summarize(
+    n_symptoms = n(),
+    number_above_25 = sum(tfidf_score >= 25),
+    percent_above_25 = round(100 * mean(tfidf_score >= 25), 3)
+    ) %>%
+  DT::datatable()
 ```
